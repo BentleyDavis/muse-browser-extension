@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body { font-family: system-ui; padding: 16px; margin: 0; background: #1a1a1a; color: #e0e0e0; }
+h2 { font-size: 16px; margin: 0 0 16px; }
+.section { background: #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.section h3 { font-size: 13px; margin: 0 0 8px; color: #aaa; text-transform: uppercase; }
+button { background: #3a3a3a; color: #e0e0e0; border: 1px solid #555; border-radius: 4px; padding: 8px 12px; margin: 4px; cursor: pointer; font-size: 13px; }
+button:hover { background: #4a4a4a; }
+button.primary { background: #1a73e8; border-color: #1a73e8; color: white; }
+button.primary:hover { background: #1557b0; }
+#log { font-family: monospace; font-size: 11px; max-height: 300px; overflow-y: auto; background: #111; padding: 8px; border-radius: 4px; }
+#log div { margin: 2px 0; }
+.status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.green { background: #34a853; }
+.dot.red { background: #ea4335; }
+.dot.yellow { background: #fbbc04; }
+input { background: #333; border: 1px solid #555; color: #e0e0e0; padding: 6px; border-radius: 4px; width: 100%; box-sizing: border-box; margin: 4px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+<h2>Muse Control</h2>
+
+<div class="section">
+<h3>Connection</h3>
+<div class="status"><div id="connDot" class="dot red"></div><span id="connText">Disconnected</span></div>
+</div>
+
+<div class="section">
+<h3>Quick Actions</h3>
+<button id="pingBtn">Ping</button>
+<button id="recordBtn">Start Recording</button>
+<button id="snapshotBtn">Snapshot</button>
+</div>
+
+<div class="section">
+<h3>Open URL</h3>
+<input id="urlInput" placeholder="https://..." />
+<button id="openUrlBtn" class="primary">Open</button>
+</div>
+
+<div class="section">
+<h3>Run Script</h3>
+<input id="scriptName" placeholder="script-name" />
+<input id="scriptParams" placeholder='{"key": "value"}' />
+<button id="runScriptBtn" class="primary">Run</button>
+</div>
+
+<div class="section">
+<h3>Log</h3>
+<div id="log"></div>
+</div>
+
+<script src="sidepanel.js"></script>
+</body>
+</html>
