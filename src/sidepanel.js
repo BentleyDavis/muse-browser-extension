@@ -156,6 +156,15 @@ function parseConfig(raw) {
   return config;
 }
 
+function log(msg) {
+  const el = document.getElementById("log");
+  if (!el) return;
+  const div = document.createElement("div");
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.prepend(div);
+  while (el.children.length > 50) el.removeChild(el.lastChild);
+}
+
 document.getElementById("pingBtn")?.addEventListener("click", () => {
   firebase?.send("run-script", { name: "ping", params: {} });
 });
