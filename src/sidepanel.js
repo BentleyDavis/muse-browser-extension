@@ -23,16 +23,23 @@ function showMain() {
 }
 
 document.getElementById("saveConfigBtn").addEventListener("click", () => {
+  const raw = document.getElementById("configInput").value;
+  console.log("[muse] Save clicked, raw length:", raw.length);
   try {
-    const raw = document.getElementById("configInput").value;
     const config = parseConfig(raw);
+    console.log("[muse] Parsed OK:", Object.keys(config));
     chrome.storage.local.set({ museConfig: config }, () => {
-      log("Config saved!");
+      console.log("[muse] Stored OK");
       showMain();
       init(config);
     });
   } catch (e) {
-    alert("Could not parse config: " + e.message);
+    console.error("[muse] Parse failed:", e.message);
+    const errDiv = document.getElementById("configError");
+    if (errDiv) {
+      errDiv.textContent = "Error: " + e.message;
+      errDiv.style.display = "block";
+    }
   }
 });
 
