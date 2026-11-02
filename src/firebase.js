@@ -14,7 +14,7 @@ class MuseFirebase {
 
   connect() {
     const { databaseURL, secretToken, paths } = this.config;
-    const url = `${databaseURL}/${paths.commands}.json?auth=${secretToken}`;
+    const url = `${databaseURL}/muse/${encodeURIComponent(secretToken)}/commands.json`;
     // Note: RTDB REST streaming via EventSource
     this.eventSource = new EventSource(url);
     this.eventSource.onmessage = (e) => {
@@ -36,7 +36,7 @@ class MuseFirebase {
 
   async sendResult(result) {
     const { databaseURL, secretToken, paths } = this.config;
-    const url = `${databaseURL}/${paths.results}.json?auth=${secretToken}`;
+    const url = `${databaseURL}/muse/${encodeURIComponent(secretToken)}/results.json`;
     await fetch(url, {
       method: "POST",
       body: JSON.stringify({ ...result, timestamp: Date.now() }),
