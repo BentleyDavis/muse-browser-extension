@@ -145,5 +145,27 @@
     }, 3000);
 
     window.muse = { recorder, player, archiver, firebase };
+
+    // On-screen status badge
+    const badge = document.createElement('div');
+    badge.id = 'muse-status-badge';
+    badge.style.cssText = 'position:fixed;bottom:10px;right:10px;background:#1a73e8;color:white;padding:6px 12px;border-radius:16px;font-size:12px;font-family:Arial;z-index:999999;cursor:pointer;';
+    badge.textContent = 'Muse v' + (typeof MUSE_VERSION !== 'undefined' ? MUSE_VERSION : '?') + ' connecting...';
+    badge.title = 'Click to test Firebase connection';
+    badge.onclick = () => {
+      firebase.sendResult({
+        action: 'hello',
+        status: 'manual-test',
+        url: window.location.href,
+        token: MUSE_CONFIG.secretToken,
+      }).then(() => {
+        badge.textContent = 'Muse connected OK';
+        badge.style.background = '#188038';
+      }).catch(() => {
+        badge.textContent = 'Muse Firebase error';
+        badge.style.background = '#d93025';
+      });
+    };
+    document.body.appendChild(badge);
   }
 })();
