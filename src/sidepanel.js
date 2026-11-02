@@ -24,16 +24,53 @@ function showMain() {
 
 document.getElementById("saveConfigBtn").addEventListener("click", () => {
   try {
-    const config = JSON.parse(document.getElementById("configInput").value);
+    const raw = document.getElementById("configInput").value;
+    const config = parseConfig(raw);
     chrome.storage.local.set({ museConfig: config }, () => {
       log("Config saved!");
       showMain();
       init(config);
     });
   } catch (e) {
-    alert("Invalid JSON: " + e.message);
+    alert("Could not parse config: " + e.message);
   }
 });
+
+// Lenient parser: accepts JS-style objects with unquoted keys,
+// single/multi-line comments, and trailing commas.
+function parseConfig(raw) {
+  // Strip single-line comments (but not inside strings)
+  let cleaned = "";
+  let inString = false, stringChar = "", inLineComment = false, inBlockComment = false;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i], next = raw[i + 1] || "";
+    if (inLineComment) {
+      if (c === "\n") { inLineComment = false; cleaned += c; }
+      continue;
+    }
+    if (inBlockComment) {
+      if (c === "*" && next === "/") { inBlockComment = false; i++; }
+      continue;
+    }
+    if (inString) {
+      cleaned += c;
+      if (c === "\\") { cleaned += next; i++; }
+      else if (c === stringChar) inString = false;
+      continue;
+    }
+    if (c === "/" && next === "/") { inLineComment = true; i++; continue; }
+    if (c === "/" && next === "*") { inBlockComment = true; i++; continue; }
+    if (c === '"' || c === "'" || c === "`") { inString = true; stringChar = c; }
+    cleaned += c;
+  }
+  // Evaluate as JS object literal (safe: local paste only, no network)
+  const fn = new Function("return (" + cleaned + ");");
+  const config = fn();
+  if (!config.firebase || !config.secretToken || !config.paths) {
+    throw new Error("Missing firebase, secretToken, or paths");
+  }
+  return config;
+}
 
 function init(config) {
   firebase = {
