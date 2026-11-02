@@ -22,6 +22,41 @@ function showMain() {
   document.getElementById("mainSection").classList.remove("hidden");
 }
 
+function init(config) {
+  firebase = {
+    config,
+    async send(action, data = {}) {
+      const url = `${config.firebase.databaseURL}/${config.paths.commands}.json?auth=${config.secretToken}`;
+      const cmd = { action, ...data, token: config.secretToken, timestamp: Date.now() };
+      await fetch(url, { method: "POST", body: JSON.stringify(cmd) });
+      log(`→ Sent: ${action}`);
+    },
+    listen() {
+      const url = `${config.firebase.databaseURL}/${config.paths.results}.json?auth=${config.secretToken}`;
+      const es = new EventSource(url);
+      es.onmessage = (e) => {
+        if (e.data === "null") return;
+        try {
+          const result = JSON.parse(e.data);
+          log(`← Result: ${result.action} — ${result.success !== false ? "OK" : "FAIL"}`);
+          if (result.result) log(`  ${result.result.slice(0, 200)}`);
+          if (result.error) log(`  Error: ${result.error}`);
+        } catch (err) { /* ignore */ }
+      };
+      es.onopen = () => setConn(true);
+      es.onerror = () => setConn(false);
+    }
+  };
+  firebase.listen();
+}
+
+function setConn(connected) {
+  const dot = document.getElementById("connDot");
+  const text = document.getElementById("connText");
+  if (dot) dot.className = "dot " + (connected ? "green" : "red");
+  if (text) text.textContent = connected ? "Connected" : "Disconnected";
+}
+
 document.getElementById("saveConfigBtn").addEventListener("click", () => {
   const raw = document.getElementById("configInput").value;
   console.log("[muse] Save clicked, raw length:", raw.length);
