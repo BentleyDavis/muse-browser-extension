@@ -148,3 +148,19 @@ firebase.on("run-script", async (cmd) => {
     });
   }
 });
+
+// Open URL in new tab (via background service worker).
+// Command: {action: "open-url", url: "https://..."}
+firebase.on("open-url", async (cmd) => {
+  console.log(`[muse] open-url: ${cmd.url}`);
+  const result = await new Promise((resolve) => {
+    chrome.runtime.sendMessage({ action: "open-url", url: cmd.url }, resolve);
+  });
+  await firebase.sendResult({
+    action: "open-url",
+    success: true,
+    tabId: result.tabId,
+    url: cmd.url,
+    token: MUSE_CONFIG.secretToken,
+  });
+});
