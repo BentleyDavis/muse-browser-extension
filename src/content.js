@@ -107,3 +107,44 @@ firebase.on("execute", async (cmd) => {
     });
   }
 });
+
+// Run a named script from the repo's /scripts/ directory.
+// Command: {action: "run-script", name: "bulk-archive", params: {...}}
+firebase.on("run-script", async (cmd) => {
+  console.log(`[muse] run-script: ${cmd.name}`);
+  try {
+    const url = `https://raw.githubusercontent.com/BentleyDavis/muse-browser-extension/main/scripts/${cmd.name}.js`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Script not found: ${cmd.name} (${res.status})`);
+    const code = await res.text();
+
+    // The script defines an async function; we invoke it with params and context
+    const fn = new Function("params", "ctx", `
+      ${code}
+      return ${cmd.name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}(params, ctx);
+    `);
+
+    const ctx = { archiver, player, recorder, muse: window.muse };
+    const timeout = cmd.timeout || 300000; // 5 min default for bulk ops
+    const result = await Promise.race([
+      fn(cmd.params || {}, ctx),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
+    ]);
+
+    await firebase.sendResult({
+      action: "run-script",
+      name: cmd.name,
+      success: true,
+      result: JSON.stringify(result).slice(0, 10000),
+      token: MUSE_CONFIG.secretToken,
+    });
+  } catch (err) {
+    await firebase.sendResult({
+      action: "run-script",
+      name: cmd.name,
+      success: false,
+      error: err.message,
+      token: MUSE_CONFIG.secretToken,
+    });
+  }
+});
