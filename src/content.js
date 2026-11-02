@@ -76,22 +76,23 @@
   window.muse = { recorder, player, archiver, firebase };
 })();
 
-// Execute arbitrary JS in page context (for bulk operations)
+// Execute arbitrary JS in page context via service worker (MV3 compliant).
 // Command: {action: "execute", code: "...", timeout: 30000}
 firebase.on("execute", async (cmd) => {
   console.log("[muse] execute command received");
   try {
-    // Wrap in async function for await support
-    const fn = new Function("muse", "archiver", "player", "recorder", `
-      return (async () => {
-        ${cmd.code}
-      })();
-    `);
-    const timeout = cmd.timeout || 60000;
-    const result = await Promise.race([
-      fn(window.muse, archiver, player, recorder),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
-    ]);
+    const result = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("timeout")), cmd.timeout || 60000);
+      chrome.runtime.sendMessage(
+        { action: "execute-code", code: cmd.code },
+        (response) => {
+          clearTimeout(timeout);
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else if (response.error) reject(new Error(response.error));
+          else resolve(response.result);
+        }
+      );
+    });
     await firebase.sendResult({
       action: "execute",
       success: true,
@@ -108,7 +109,7 @@ firebase.on("execute", async (cmd) => {
   }
 });
 
-// Run a named script from the repo's /scripts/ directory.
+// Run a named script from the repo's /scripts/ directory via service worker.
 // Command: {action: "run-script", name: "bulk-archive", params: {...}}
 firebase.on("run-script", async (cmd) => {
   console.log(`[muse] run-script: ${cmd.name}`);
@@ -118,18 +119,30 @@ firebase.on("run-script", async (cmd) => {
     if (!res.ok) throw new Error(`Script not found: ${cmd.name} (${res.status})`);
     const code = await res.text();
 
-    // The script defines an async function; we invoke it with params and context
-    const fn = new Function("params", "ctx", `
+    // Convert kebab-case to camelCase for function name
+    const fnName = cmd.name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    const wrappedCode = `
       ${code}
-      return ${cmd.name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}(params, ctx);
-    `);
+      return (${fnName})(${JSON.stringify(cmd.params || {})}, {
+        archiver: window.muse.archiver,
+        player: window.muse.player,
+        recorder: window.muse.recorder,
+        muse: window.muse,
+      });
+    `;
 
-    const ctx = { archiver, player, recorder, muse: window.muse };
-    const timeout = cmd.timeout || 300000; // 5 min default for bulk ops
-    const result = await Promise.race([
-      fn(cmd.params || {}, ctx),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
-    ]);
+    const result = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("timeout")), cmd.timeout || 300000);
+      chrome.runtime.sendMessage(
+        { action: "execute-code", code: wrappedCode },
+        (response) => {
+          clearTimeout(timeout);
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else if (response.error) reject(new Error(response.error));
+          else resolve(response.result);
+        }
+      );
+    });
 
     await firebase.sendResult({
       action: "run-script",
