@@ -33,8 +33,11 @@ function init(config) {
     },
     listen() {
       const url = `${config.firebase.databaseURL}/${config.paths.results}.json?auth=${config.secretToken}`;
+      log(`Connecting to: ${config.firebase.databaseURL}/${config.paths.results}.json`);
+      console.log("[muse] EventSource URL:", url.replace(/auth=[^&]+/, "auth=***"));
       const es = new EventSource(url);
       es.onmessage = (e) => {
+        console.log("[muse] EventSource message:", e.data?.slice(0, 100));
         if (e.data === "null") return;
         try {
           const result = JSON.parse(e.data);
@@ -43,8 +46,16 @@ function init(config) {
           if (result.error) log(`  Error: ${result.error}`);
         } catch (err) { /* ignore */ }
       };
-      es.onopen = () => setConn(true);
-      es.onerror = () => setConn(false);
+      es.onopen = () => {
+        console.log("[muse] EventSource opened");
+        log("Connected to Firebase");
+        setConn(true);
+      };
+      es.onerror = (e) => {
+        console.error("[muse] EventSource error:", e);
+        log("Connection failed — check databaseURL, paths, and secret token");
+        setConn(false);
+      };
     }
   };
   firebase.listen();
