@@ -185,6 +185,12 @@ document.getElementById("openUrlBtn")?.addEventListener("click", () => {
   if (url) firebase?.send("open-url", { url });
 });
 
+document.getElementById("resetBtn")?.addEventListener("click", () => {
+  chrome.storage.local.remove(["museConfig"], () => {
+    location.reload();
+  });
+});
+
 document.getElementById("runScriptBtn")?.addEventListener("click", () => {
   const name = document.getElementById("scriptName").value.trim();
   let params = {};
