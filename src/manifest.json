@@ -1,1 +1,24 @@
-{"action":{"default_popup":"popup.html","default_title":"Muse Control"},"background":{"service_worker":"background.js"},"content_scripts":[{"js":["config.local.js","firebase.js","recorder.js","player.js","archiver.js","content.js"],"matches":["https://messages.google.com/*"],"run_at":"document_idle"}],"description":"Real-time browser automation with human-like mouse movement","host_permissions":["https://messages.google.com/*"],"manifest_version":3,"name":"Muse Browser Control","permissions":["activeTab","scripting","storage"],"version":"0.1.0"}
+{
+  "manifest_version": 3,
+  "name": "Muse Browser Control",
+  "version": "0.2.0",
+  "description": "Real-time browser automation with human-like mouse movement",
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel", "tabs"],
+  "host_permissions": ["https://messages.google.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Muse Control"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://messages.google.com/*"],
+      "js": ["config.local.js", "firebase.js", "recorder.js", "player.js", "archiver.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
