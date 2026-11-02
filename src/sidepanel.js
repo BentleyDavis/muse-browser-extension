@@ -191,6 +191,16 @@ document.getElementById("resetBtn")?.addEventListener("click", () => {
   });
 });
 
+document.getElementById("editConfigBtn")?.addEventListener("click", () => {
+  chrome.storage.local.get(["museConfig"], (result) => {
+    if (result.museConfig) {
+      // Pre-fill with current config as formatted JSON
+      document.getElementById("configInput").value = JSON.stringify(result.museConfig, null, 2);
+    }
+    showSetup();
+  });
+});
+
 document.getElementById("runScriptBtn")?.addEventListener("click", () => {
   const name = document.getElementById("scriptName").value.trim();
   let params = {};
