@@ -37,81 +37,116 @@ document.getElementById("saveConfigBtn").addEventListener("click", () => {
 });
 
 // Lenient parser: accepts JS-style objects with unquoted keys,
-// single/multi-line comments, and trailing commas.
+// single/multi-line comments, and trailing commas. No eval.
 function parseConfig(raw) {
-  // Strip single-line comments (but not inside strings)
-  let cleaned = "";
-  let inString = false, stringChar = "", inLineComment = false, inBlockComment = false;
-  for (let i = 0; i < raw.length; i++) {
-    const c = raw[i], next = raw[i + 1] || "";
-    if (inLineComment) {
-      if (c === "\n") { inLineComment = false; cleaned += c; }
-      continue;
+  let pos = 0;
+
+  function skipWsAndComments() {
+    while (pos < raw.length) {
+      const c = raw[pos], next = raw[pos + 1] || "";
+      if (c === " " || c === "\t" || c === "\n" || c === "\r") { pos++; continue; }
+      if (c === "/" && next === "/") {
+        while (pos < raw.length && raw[pos] !== "\n") pos++;
+        continue;
+      }
+      if (c === "/" && next === "*") {
+        pos += 2;
+        while (pos < raw.length - 1 && !(raw[pos] === "*" && raw[pos + 1] === "/")) pos++;
+        pos += 2;
+        continue;
+      }
+      break;
     }
-    if (inBlockComment) {
-      if (c === "*" && next === "/") { inBlockComment = false; i++; }
-      continue;
-    }
-    if (inString) {
-      cleaned += c;
-      if (c === "\\") { cleaned += next; i++; }
-      else if (c === stringChar) inString = false;
-      continue;
-    }
-    if (c === "/" && next === "/") { inLineComment = true; i++; continue; }
-    if (c === "/" && next === "*") { inBlockComment = true; i++; continue; }
-    if (c === '"' || c === "'" || c === "`") { inString = true; stringChar = c; }
-    cleaned += c;
   }
-  // Evaluate as JS object literal (safe: local paste only, no network)
-  const fn = new Function("return (" + cleaned + ");");
-  const config = fn();
+
+  function parseString() {
+    const quote = raw[pos];
+    pos++;
+    let s = "";
+    while (pos < raw.length && raw[pos] !== quote) {
+      if (raw[pos] === "\\") {
+        pos++;
+        const e = raw[pos] || "";
+        s += e === "n" ? "\n" : e === "t" ? "\t" : e === "r" ? "\r" : e;
+      } else {
+        s += raw[pos];
+      }
+      pos++;
+    }
+    pos++; // closing quote
+    return s;
+  }
+
+  function parseKey() {
+    skipWsAndComments();
+    const c = raw[pos];
+    if (c === '"' || c === "'") return parseString();
+    // Unquoted key: letters, digits, underscore, $
+    let key = "";
+    while (pos < raw.length && /[a-zA-Z0-9_$]/.test(raw[pos])) {
+      key += raw[pos++];
+    }
+    if (!key) throw new Error("Expected key at position " + pos);
+    return key;
+  }
+
+  function parseValue() {
+    skipWsAndComments();
+    const c = raw[pos];
+    if (c === "{") return parseObject();
+    if (c === "[") return parseArray();
+    if (c === '"' || c === "'") return parseString();
+    if (raw.substr(pos, 4) === "true") { pos += 4; return true; }
+    if (raw.substr(pos, 5) === "false") { pos += 5; return false; }
+    if (raw.substr(pos, 4) === "null") { pos += 4; return null; }
+    // Number
+    const numMatch = raw.substr(pos).match(/^-?\d+(\.\d+)?/);
+    if (numMatch) { pos += numMatch[0].length; return parseFloat(numMatch[0]); }
+    throw new Error("Unexpected value at position " + pos);
+  }
+
+  function parseObject() {
+    const obj = {};
+    pos++; // {
+    while (true) {
+      skipWsAndComments();
+      if (raw[pos] === "}") { pos++; break; }
+      const key = parseKey();
+      skipWsAndComments();
+      if (raw[pos] !== ":") throw new Error("Expected : at position " + pos);
+      pos++;
+      obj[key] = parseValue();
+      skipWsAndComments();
+      if (raw[pos] === ",") { pos++; continue; }
+      if (raw[pos] === "}") { pos++; break; }
+      throw new Error("Expected , or } at position " + pos);
+    }
+    return obj;
+  }
+
+  function parseArray() {
+    const arr = [];
+    pos++; // [
+    while (true) {
+      skipWsAndComments();
+      if (raw[pos] === "]") { pos++; break; }
+      arr.push(parseValue());
+      skipWsAndComments();
+      if (raw[pos] === ",") { pos++; continue; }
+      if (raw[pos] === "]") { pos++; break; }
+      throw new Error("Expected , or ] at position " + pos);
+    }
+    return arr;
+  }
+
+  skipWsAndComments();
+  const config = parseValue();
+  skipWsAndComments();
+  if (pos < raw.length) throw new Error("Unexpected trailing content at position " + pos);
   if (!config.firebase || !config.secretToken || !config.paths) {
     throw new Error("Missing firebase, secretToken, or paths");
   }
   return config;
-}
-
-function init(config) {
-  firebase = {
-    config,
-    async send(action, data = {}) {
-      const url = `${config.firebase.databaseURL}/${config.paths.commands}.json?auth=${config.secretToken}`;
-      const cmd = { action, ...data, token: config.secretToken, timestamp: Date.now() };
-      await fetch(url, { method: "POST", body: JSON.stringify(cmd) });
-      log(`→ Sent: ${action}`);
-    },
-    listen() {
-      const url = `${config.firebase.databaseURL}/${config.paths.results}.json?auth=${config.secretToken}`;
-      const es = new EventSource(url);
-      es.onmessage = (e) => {
-        if (e.data === "null") return;
-        try {
-          const result = JSON.parse(e.data);
-          log(`← Result: ${result.action} — ${result.success !== false ? "OK" : "FAIL"}`);
-          if (result.result) log(`  ${result.result.slice(0, 200)}`);
-          if (result.error) log(`  Error: ${result.error}`);
-        } catch (err) { /* ignore */ }
-      };
-      es.onopen = () => setConn(true);
-      es.onerror = () => setConn(false);
-    }
-  };
-  firebase.listen();
-}
-
-function setConn(connected) {
-  document.getElementById("connDot").className = "dot " + (connected ? "green" : "red");
-  document.getElementById("connText").textContent = connected ? "Connected" : "Disconnected";
-}
-
-function log(msg) {
-  const el = document.getElementById("log");
-  if (!el) return;
-  const div = document.createElement("div");
-  div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  el.prepend(div);
-  while (el.children.length > 50) el.removeChild(el.lastChild);
 }
 
 document.getElementById("pingBtn")?.addEventListener("click", () => {
