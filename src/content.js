@@ -1,7 +1,7 @@
 // Main content script — wires everything together.
 
 (function() {
-  console.log("[muse] content script loaded");
+  console.log("[muse] content script loaded, version " + (typeof MUSE_VERSION !== "undefined" ? MUSE_VERSION : "unknown"));
 
   chrome.storage.local.get(["museConfig"], (result) => {
     if (!result.museConfig) {
