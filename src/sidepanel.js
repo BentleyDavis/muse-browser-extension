@@ -3,6 +3,14 @@
 let firebase = null;
 
 // Check for stored config
+// Display version
+try {
+  const v = typeof MUSE_VERSION !== "undefined" ? MUSE_VERSION : "unknown";
+  const el = document.getElementById("version");
+  if (el) el.textContent = "v" + v;
+  console.log("[muse] side panel version " + v);
+} catch (e) {}
+
 chrome.storage.local.get(["museConfig"], (result) => {
   if (result.museConfig) {
     showMain();
@@ -238,7 +246,15 @@ document.getElementById("resetBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("editConfigBtn")?.addEventListener("click", () => {
-  chrome.storage.local.get(["museConfig"], (result) => {
+  // Display version
+try {
+  const v = typeof MUSE_VERSION !== "undefined" ? MUSE_VERSION : "unknown";
+  const el = document.getElementById("version");
+  if (el) el.textContent = "v" + v;
+  console.log("[muse] side panel version " + v);
+} catch (e) {}
+
+chrome.storage.local.get(["museConfig"], (result) => {
     if (result.museConfig) {
       // Pre-fill with current config as formatted JSON
       document.getElementById("configInput").value = JSON.stringify(result.museConfig, null, 2);
