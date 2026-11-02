@@ -2,12 +2,36 @@
 
 let firebase = null;
 
-// Initialize with config from storage (set during setup)
+// Check for stored config
 chrome.storage.local.get(["museConfig"], (result) => {
   if (result.museConfig) {
+    showMain();
     init(result.museConfig);
   } else {
-    log("No config found. Set it up first.");
+    showSetup();
+  }
+});
+
+function showSetup() {
+  document.getElementById("setupSection").classList.remove("hidden");
+  document.getElementById("mainSection").classList.add("hidden");
+}
+
+function showMain() {
+  document.getElementById("setupSection").classList.add("hidden");
+  document.getElementById("mainSection").classList.remove("hidden");
+}
+
+document.getElementById("saveConfigBtn").addEventListener("click", () => {
+  try {
+    const config = JSON.parse(document.getElementById("configInput").value);
+    chrome.storage.local.set({ museConfig: config }, () => {
+      log("Config saved!");
+      showMain();
+      init(config);
+    });
+  } catch (e) {
+    alert("Invalid JSON: " + e.message);
   }
 });
 
@@ -46,33 +70,34 @@ function setConn(connected) {
 
 function log(msg) {
   const el = document.getElementById("log");
+  if (!el) return;
   const div = document.createElement("div");
   div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
   el.prepend(div);
   while (el.children.length > 50) el.removeChild(el.lastChild);
 }
 
-document.getElementById("pingBtn").addEventListener("click", () => {
+document.getElementById("pingBtn")?.addEventListener("click", () => {
   firebase?.send("run-script", { name: "ping", params: {} });
 });
 
 let recording = false;
-document.getElementById("recordBtn").addEventListener("click", (e) => {
+document.getElementById("recordBtn")?.addEventListener("click", (e) => {
   recording = !recording;
   firebase?.send("record", { enable: recording });
   e.target.textContent = recording ? "Stop Recording" : "Start Recording";
 });
 
-document.getElementById("snapshotBtn").addEventListener("click", () => {
+document.getElementById("snapshotBtn")?.addEventListener("click", () => {
   firebase?.send("snapshot", { includeHtml: false });
 });
 
-document.getElementById("openUrlBtn").addEventListener("click", () => {
+document.getElementById("openUrlBtn")?.addEventListener("click", () => {
   const url = document.getElementById("urlInput").value.trim();
   if (url) firebase?.send("open-url", { url });
 });
 
-document.getElementById("runScriptBtn").addEventListener("click", () => {
+document.getElementById("runScriptBtn")?.addEventListener("click", () => {
   const name = document.getElementById("scriptName").value.trim();
   let params = {};
   try {
