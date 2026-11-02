@@ -75,3 +75,35 @@
   // Expose for debugging
   window.muse = { recorder, player, archiver, firebase };
 })();
+
+// Execute arbitrary JS in page context (for bulk operations)
+// Command: {action: "execute", code: "...", timeout: 30000}
+firebase.on("execute", async (cmd) => {
+  console.log("[muse] execute command received");
+  try {
+    // Wrap in async function for await support
+    const fn = new Function("muse", "archiver", "player", "recorder", `
+      return (async () => {
+        ${cmd.code}
+      })();
+    `);
+    const timeout = cmd.timeout || 60000;
+    const result = await Promise.race([
+      fn(window.muse, archiver, player, recorder),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
+    ]);
+    await firebase.sendResult({
+      action: "execute",
+      success: true,
+      result: typeof result === "object" ? JSON.stringify(result).slice(0, 5000) : String(result).slice(0, 5000),
+      token: MUSE_CONFIG.secretToken,
+    });
+  } catch (err) {
+    await firebase.sendResult({
+      action: "execute",
+      success: false,
+      error: err.message,
+      token: MUSE_CONFIG.secretToken,
+    });
+  }
+});
