@@ -26,13 +26,13 @@ function init(config) {
   firebase = {
     config,
     async send(action, data = {}) {
-      const url = `${config.firebase.databaseURL}/${config.paths.commands}.json?auth=${config.secretToken}`;
+      const url = `${config.firebase.databaseURL}/muse/${encodeURIComponent(config.secretToken)}/commands.json`;
       const cmd = { action, ...data, token: config.secretToken, timestamp: Date.now() };
       await fetch(url, { method: "POST", body: JSON.stringify(cmd) });
       log(`→ Sent: ${action}`);
     },
     listen() {
-      const url = `${config.firebase.databaseURL}/${config.paths.results}.json?auth=${config.secretToken}`;
+      const url = `${config.firebase.databaseURL}/muse/${encodeURIComponent(config.secretToken)}/results.json`;
       log(`Connecting to: ${config.firebase.databaseURL}/${config.paths.results}.json`);
       console.log("[muse] EventSource URL:", url.replace(/auth=[^&]+/, "auth=***"));
       const es = new EventSource(url);
