@@ -17,12 +17,22 @@ button.primary:hover { background: #1557b0; }
 .dot.green { background: #34a853; }
 .dot.red { background: #ea4335; }
 .dot.yellow { background: #fbbc04; }
-input { background: #333; border: 1px solid #555; color: #e0e0e0; padding: 6px; border-radius: 4px; width: 100%; box-sizing: border-box; margin: 4px 0; font-size: 13px; }
+input, textarea { background: #333; border: 1px solid #555; color: #e0e0e0; padding: 6px; border-radius: 4px; width: 100%; box-sizing: border-box; margin: 4px 0; font-size: 13px; }
+textarea { height: 120px; font-family: monospace; font-size: 11px; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
 <h2>Muse Control</h2>
 
+<div id="setupSection" class="section hidden">
+<h3>Setup</h3>
+<p style="font-size:12px;color:#aaa;">Paste your Firebase config (from config.local.js):</p>
+<textarea id="configInput" placeholder='{"firebase": {"apiKey": "...", "databaseURL": "...", ...}, "secretToken": "...", "paths": {...}}'></textarea>
+<button id="saveConfigBtn" class="primary">Save Config</button>
+</div>
+
+<div id="mainSection" class="hidden">
 <div class="section">
 <h3>Connection</h3>
 <div class="status"><div id="connDot" class="dot red"></div><span id="connText">Disconnected</span></div>
@@ -51,6 +61,7 @@ input { background: #333; border: 1px solid #555; color: #e0e0e0; padding: 6px; 
 <div class="section">
 <h3>Log</h3>
 <div id="log"></div>
+</div>
 </div>
 
 <script src="sidepanel.js"></script>
